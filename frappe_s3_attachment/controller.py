@@ -183,7 +183,7 @@ def file_upload_to_s3(doc, method):
     """
     check and upload files to s3. the path check and
     """
-    if doc.is_remote_file():
+    if doc.is_remote_file:
         # url based file - no actual upload
         return
 
