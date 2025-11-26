@@ -129,8 +129,10 @@ class S3Operations(object):
                     }
                 )
 
-        except boto3.exceptions.S3UploadFailedError:
-            frappe.throw(frappe._("File Upload Failed. Please try again."))
+        except boto3.exceptions.S3UploadFailedError as e:
+            frappe.throw(
+                frappe._("File Upload Failed.") + "<br>" + str(e)
+            )
         return key
 
     def delete_from_s3(self, key):
