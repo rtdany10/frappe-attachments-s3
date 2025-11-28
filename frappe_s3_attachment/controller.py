@@ -234,8 +234,8 @@ def file_upload_to_s3(doc, method):
     doc.file_url = file_url
     doc.db_update()
 
-    if parent_doctype and frappe.get_meta(parent_doctype).get('image_field'):
-        frappe.db.set_value(parent_doctype, parent_name, frappe.get_meta(parent_doctype).get('image_field'), file_url)
+    # if parent_doctype and frappe.get_meta(parent_doctype).get('image_field'):
+    #     frappe.db.set_value(parent_doctype, parent_name, frappe.get_meta(parent_doctype).get('image_field'), file_url)
 
 
 @frappe.whitelist()
