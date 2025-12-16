@@ -18,7 +18,6 @@ import magic
 
 
 class S3Operations(object):
-
     def __init__(self):
         """
         Function to initialise the aws settings from frappe S3 File attachment
