@@ -191,43 +191,50 @@ def file_upload_to_s3(doc, method):
     if doc.is_remote_file:
         return
 
+    if doc.file_type == "JSON":
+        return
+
+    parent_doctype = doc.attached_to_doctype or 'File'
+    ignore_s3_upload_for_doctype = frappe.local.conf.get('ignore_s3_upload_for_doctype') or ['Data Import']
+    ignore_s3_upload_for_doctype.extend(["Prepared Report", "Repost Item Valuation"])
+    if parent_doctype in ignore_s3_upload_for_doctype:
+        return
+
     s3_upload = S3Operations()
     path = doc.file_url
     site_path = frappe.utils.get_site_path()
-    parent_doctype = doc.attached_to_doctype or 'File'
     parent_name = doc.attached_to_name
-    ignore_s3_upload_for_doctype = frappe.local.conf.get('ignore_s3_upload_for_doctype') or ['Data Import']
-    if parent_doctype not in ignore_s3_upload_for_doctype:
-        if not doc.is_private:
-            file_path = site_path + '/public' + path
-        else:
-            file_path = site_path + path
-        key = s3_upload.upload_files_to_s3_with_key(
-            file_path, doc.file_name,
-            doc.is_private, parent_doctype,
-            parent_name
+
+    if not doc.is_private:
+        file_path = site_path + '/public' + path
+    else:
+        file_path = site_path + path
+    key = s3_upload.upload_files_to_s3_with_key(
+        file_path, doc.file_name,
+        doc.is_private, parent_doctype,
+        parent_name
+    )
+
+    if doc.is_private:
+        method = "frappe_s3_attachment.controller.generate_file"
+        file_url = """/api/method/{0}?key={1}&file_name={2}""".format(method, key, doc.file_name)
+    else:
+        file_url = '{}/{}/{}'.format(
+            s3_upload.S3_CLIENT.meta.endpoint_url,
+            s3_upload.BUCKET,
+            key
         )
+    os.remove(file_path)
+    frappe.db.sql("""UPDATE `tabFile` SET file_url=%s, folder=%s,
+        old_parent=%s, content_hash=%s WHERE name=%s""", (
+        file_url, 'Home/Attachments', 'Home/Attachments', key, doc.name))
 
-        if doc.is_private:
-            method = "frappe_s3_attachment.controller.generate_file"
-            file_url = """/api/method/{0}?key={1}&file_name={2}""".format(method, key, doc.file_name)
-        else:
-            file_url = '{}/{}/{}'.format(
-                s3_upload.S3_CLIENT.meta.endpoint_url,
-                s3_upload.BUCKET,
-                key
-            )
-        os.remove(file_path)
-        frappe.db.sql("""UPDATE `tabFile` SET file_url=%s, folder=%s,
-            old_parent=%s, content_hash=%s WHERE name=%s""", (
-            file_url, 'Home/Attachments', 'Home/Attachments', key, doc.name))
+    doc.file_url = file_url
 
-        doc.file_url = file_url
+    if parent_doctype and frappe.get_meta(parent_doctype).get('image_field'):
+        frappe.db.set_value(parent_doctype, parent_name, frappe.get_meta(parent_doctype).get('image_field'), file_url)
 
-        if parent_doctype and frappe.get_meta(parent_doctype).get('image_field'):
-            frappe.db.set_value(parent_doctype, parent_name, frappe.get_meta(parent_doctype).get('image_field'), file_url)
-
-        frappe.db.commit()
+    frappe.db.commit()
 
 
 @frappe.whitelist()
