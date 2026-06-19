@@ -96,6 +96,10 @@ doc_events = {
     }
 }
 
+override_doctype_class = {
+    "File": "frappe_s3_attachment.overrides.file.CustomFile"
+}
+
 # Scheduled Tasks
 # ---------------
 
